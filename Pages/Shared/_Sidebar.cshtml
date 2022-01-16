@@ -67,7 +67,8 @@
 @using k8s.Models
 @inject IKubernetes _kubeClient
 @{
-    var podNameList = (await _kubeClient.ListPodForAllNamespacesAsync()).Items.Where(obj => obj.OwnerReferences().Count() == 0).Select(obj => new K8sSimpleObj { MetaName = obj.Metadata.Name, Namespace = obj.Metadata.NamespaceProperty });
+    var podItems = _kubeClient.ListPodForAllNamespacesAsync().GetAwaiter().GetResult().Items;
+    var podNameList = (await _kubeClient.ListPodForAllNamespacesAsync()).Items.Where(obj => obj.OwnerReferences() == null).Select(obj => new K8sSimpleObj { MetaName = obj.Metadata.Name, Namespace = obj.Metadata.NamespaceProperty });
     var deploymentNameList = (await _kubeClient.ListDeploymentForAllNamespacesAsync()).Items.Select(obj => new K8sSimpleObj { MetaName = obj.Metadata.Name, Namespace = obj.Metadata.NamespaceProperty });
     var daemonSetsNameList = (await _kubeClient.ListDaemonSetForAllNamespacesAsync()).Items.Select(obj => new K8sSimpleObj { MetaName = obj.Metadata.Name, Namespace = obj.Metadata.NamespaceProperty });
     var statefulSetsNameList = (await _kubeClient.ListStatefulSetForAllNamespacesAsync()).Items.Select(obj => new K8sSimpleObj { MetaName = obj.Metadata.Name, Namespace = obj.Metadata.NamespaceProperty });
@@ -80,9 +81,9 @@
             <button class="btn btn-toggle align-items-center collapsed" data-bs-toggle="collapse" data-bs-target="#pod-collapse" aria-expanded="true">
                 Pod
             </button>
-            <div class="collapse show" id="deployment-collapse">
+            <div class="collapse show" id="pod-collapse">
                 <ul class="btn-toggle-nav list-unstyled small">
-                    @foreach (var k8SSimpleObj in deploymentNameList)
+                    @foreach (var k8SSimpleObj in podNameList)
                     {
                         <li><a href="/LogStream/@k8SSimpleObj.Namespace/@V1Pod.KubeKind/@k8SSimpleObj.MetaName">@k8SSimpleObj.MetaName</a></li>
                     }

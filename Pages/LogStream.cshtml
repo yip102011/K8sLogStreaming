@@ -48,13 +48,14 @@
             return console.error(err.toString());
         });
 
+        var logContainer = document.querySelector(".logs_container");
+
         function registerForStreamNotifications(k8sNamespace, podName) {
             var subscription = connection.stream("GetPodLog", k8sNamespace, podName, config.sinceSeconds).subscribe({
                 next: (content) => {
-                    var logContainer = $('.logs_container');
                     logContainer.append(content);
                     if(config.isFollow){
-                        logContainer.scrollTop(logContainer[0].scrollHeight);
+                        logContainer.scrollTop = logContainer.scrollHeight;
                     }
                 }
             });
