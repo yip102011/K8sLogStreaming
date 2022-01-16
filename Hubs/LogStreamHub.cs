@@ -18,11 +18,11 @@ namespace SignalRChat.Hubs
             _kubeClient = kubeClient;
         }
 
-        public async IAsyncEnumerable<string> GetPodLog(string ns, string pod, [EnumeratorCancellation] CancellationToken cancellationToken)
+        public async IAsyncEnumerable<string> GetPodLog(string ns, string pod, int sinceSeconds, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var stream = await _kubeClient.ReadNamespacedPodLogAsync(pod, ns, follow: true, sinceSeconds: 1500);
+            var stream = await _kubeClient.ReadNamespacedPodLogAsync(pod, ns, follow: true, sinceSeconds: sinceSeconds);
 
             var buffer = new byte[8192];
 

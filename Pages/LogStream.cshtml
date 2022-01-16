@@ -1,7 +1,7 @@
-﻿@page
+﻿@page "/LogStream/{Namespace?}/{KubeKind?}/{MetaName?}"
 @model K8sLogStreaming.Pages.LogStreamModel
 @{
-    ViewData["Title"] = $"K8S Logs - {Model.Namespace} - {Model.Resource} - {Model.MetaName}";
+    ViewData["Title"] = $"K8S Logs - {Model.Namespace} - {Model.KubeKind} - {Model.MetaName}";
 }
 
 <div>
@@ -19,8 +19,8 @@
     }
 
     .logs_container {
-        /* 73px is total height of nav */
-        height: calc(100vh - 73px);
+        /* 57px is height of header */
+        height: calc(100vh - 57px - 17px);
         margin: 0px;
     }
 </style>
@@ -35,6 +35,11 @@
         var podNameListString = "@(string.Join(',',Model.PodNameList))";
         var podNameList = podNameListString.split(',');
 
+        var config = {
+            sinceSeconds: 300,
+            isFollow: true
+        };
+
         var connection = new signalR.HubConnectionBuilder().withUrl(hubUrl, { transport: signalR.HttpTransportType.WebSockets }).build();
 
         connection.start().then(function () {
@@ -44,12 +49,13 @@
         });
 
         function registerForStreamNotifications(k8sNamespace, podName) {
-            var subscription = connection.stream("GetPodLog", k8sNamespace, podName).subscribe({
+            var subscription = connection.stream("GetPodLog", k8sNamespace, podName, config.sinceSeconds).subscribe({
                 next: (content) => {
                     var logContainer = $('.logs_container');
                     logContainer.append(content);
-
-                    logContainer.scrollTop(logContainer[0].scrollHeight);
+                    if(config.isFollow){
+                        logContainer.scrollTop(logContainer[0].scrollHeight);
+                    }
                 }
             });
         }
