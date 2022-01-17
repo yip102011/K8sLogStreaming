@@ -1,56 +1,15 @@
-﻿
-<style>
-    .btn-toggle {
-        display: inline-flex;
-        align-items: center;
-        padding: 5px;
-        font-weight: 600;
-        color: rgba(0, 0, 0, .65);
-        background-color: transparent;
-        border: 0;
-        width: 100%;
-    }
-
-        .btn-toggle:hover,
-        .btn-toggle:focus {
-            color: rgba(0, 0, 0, .85);
-            background-color: #d2f4ea;
-        }
-
-        .btn-toggle::before {
-            width: 1.25em;
-            line-height: 0;
-            content: ">";
-            transition: transform .35s ease;
-            transform-origin: .5em 50%;
-        }
-
-        .btn-toggle[aria-expanded="true"] {
-            color: rgba(0, 0, 0, .85);
-        }
-
-            .btn-toggle[aria-expanded="true"]::before {
-                transform: rotate(90deg);
-            }
-
-    .btn-toggle-nav a {
-        display: inline-flex;
-        padding: 5px 5px 5px 20px;
-        text-decoration: none;
-        width: 100%;
-        color: inherit;
-    }
-
-        .btn-toggle-nav a:hover,
-        .btn-toggle-nav a:focus {
-            background-color: #d2f4ea;
-        }
-
-    .sidebar {
-        width: 250px;
-        position: absolute;
-    }
-</style>
+﻿@using K8sLogStreaming.Models
+@using k8s
+@using k8s.Models
+@inject IKubernetes _kubeClient
+@{
+    var podNameList = (await _kubeClient.ListPodForAllNamespacesAsync()).Items.Where(obj => obj.OwnerReferences() == null).Select(obj => new K8sSimpleObj { MetaName = obj.Metadata.Name, Namespace = obj.Metadata.NamespaceProperty });
+    var deploymentNameList = (await _kubeClient.ListDeploymentForAllNamespacesAsync()).Items.Select(obj => new K8sSimpleObj { MetaName = obj.Metadata.Name, Namespace = obj.Metadata.NamespaceProperty });
+    var daemonSetsNameList = (await _kubeClient.ListDaemonSetForAllNamespacesAsync()).Items.Select(obj => new K8sSimpleObj { MetaName = obj.Metadata.Name, Namespace = obj.Metadata.NamespaceProperty });
+    var statefulSetsNameList = (await _kubeClient.ListStatefulSetForAllNamespacesAsync()).Items.Select(obj => new K8sSimpleObj { MetaName = obj.Metadata.Name, Namespace = obj.Metadata.NamespaceProperty });
+    var cronJobsNameList = (await _kubeClient.ListCronJobForAllNamespacesAsync()).Items.Select(obj => new K8sSimpleObj { MetaName = obj.Metadata.Name, Namespace = obj.Metadata.NamespaceProperty });
+}
+@section Scripts{
 <script>
     /* global bootstrap: false */
     (function () {
@@ -61,20 +20,7 @@
         })
     })()
 </script>
-
-@using K8sLogStreaming.Models
-@using k8s
-@using k8s.Models
-@inject IKubernetes _kubeClient
-@{
-    var podItems = _kubeClient.ListPodForAllNamespacesAsync().GetAwaiter().GetResult().Items;
-    var podNameList = (await _kubeClient.ListPodForAllNamespacesAsync()).Items.Where(obj => obj.OwnerReferences() == null).Select(obj => new K8sSimpleObj { MetaName = obj.Metadata.Name, Namespace = obj.Metadata.NamespaceProperty });
-    var deploymentNameList = (await _kubeClient.ListDeploymentForAllNamespacesAsync()).Items.Select(obj => new K8sSimpleObj { MetaName = obj.Metadata.Name, Namespace = obj.Metadata.NamespaceProperty });
-    var daemonSetsNameList = (await _kubeClient.ListDaemonSetForAllNamespacesAsync()).Items.Select(obj => new K8sSimpleObj { MetaName = obj.Metadata.Name, Namespace = obj.Metadata.NamespaceProperty });
-    var statefulSetsNameList = (await _kubeClient.ListStatefulSetForAllNamespacesAsync()).Items.Select(obj => new K8sSimpleObj { MetaName = obj.Metadata.Name, Namespace = obj.Metadata.NamespaceProperty });
-    var cronJobsNameList = (await _kubeClient.ListCronJobForAllNamespacesAsync()).Items.Select(obj => new K8sSimpleObj { MetaName = obj.Metadata.Name, Namespace = obj.Metadata.NamespaceProperty });
 }
-
 <div class="sidebar">
     <ul class="list-unstyled">
         <li class="mb-1">
