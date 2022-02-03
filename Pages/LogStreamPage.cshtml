@@ -1,0 +1,26 @@
+﻿@page "/"
+@model K8sLogStreaming.Pages.LogStreamPageModel
+@{
+    ViewData["Title"] = $"K8S Logs - {Model.Namespace} - {Model.KubeKind} - {Model.MetaName}";
+    Layout = "_Layout_2";
+}
+
+
+
+
+
+@section Scripts{
+<script>
+new Vue({
+    el: '#app',
+    data: function () {
+        const item = {
+            date: '2016-05-02',
+            name: '王小虎',
+            address: '上海市普陀区金沙江路 1518 弄'
+        };
+        return { tableData: Array(20).fill(item) };
+    }
+})
+</script>
+}

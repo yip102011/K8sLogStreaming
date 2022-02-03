@@ -7,7 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddSignalR();
-builder.Services.AddTransient<IKubernetes>(sp => new Kubernetes(KubernetesClientConfiguration.BuildDefaultConfig()));
+builder.Services.AddSingleton<IKubernetes>(sp => new Kubernetes(KubernetesClientConfiguration.BuildDefaultConfig()));
 
 
 
