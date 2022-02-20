@@ -4,13 +4,13 @@
 <head>
     <meta name="viewport" content="width=device-width" />
     <title>@ViewBag.Title</title>
-    
+
     <!-- Import primevue style -->
     <link href="https://unpkg.com/primevue@3.11.1/resources/themes/saga-blue/theme.css" rel="stylesheet" />
     <link href="https://unpkg.com/primevue@3.11.1/resources/primevue.min.css" rel="stylesheet" />
     <link href="https://unpkg.com/primeflex@3.1.0/primeflex.min.css" rel="stylesheet" />
     <link href="https://unpkg.com/primeicons/primeicons.css" rel="stylesheet" />
-    
+
     <!-- Import Vue 3 -->
     <script src="https://unpkg.com/vue@next"></script>
 
@@ -21,10 +21,9 @@
     <script src="https://unpkg.com/primevue@3.11.1/sidebar/sidebar.min.js"></script>
     <script src="https://unpkg.com/primevue@3.11.1/skeleton/skeleton.min.js"></script>
     <script src="https://unpkg.com/vue-router@4.0.0/dist/vue-router.global.js"></script>
-    
+
     <!-- Import style -->
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/K8sLogStreaming.styles.css" asp-append-version="true" />
 
     <!-- Import custom script-->
     <script src="~/js/site.js" asp-append-version="true"></script>
@@ -37,7 +36,7 @@
     </style>
     <div id="app">
         <p-splitter style="height: 100vh;" :gutter-size="0">
-            <p-splitterpanel style="max-width:250px; height:100%; overflow:auto; border-right:1px solid gray;" :minSize="20">
+            <p-splitterpanel style="max-width:250px; min-width:250px; height:100%; overflow:auto; border-right:1px solid gray;" :minSize="20">
                 <p-menu style="width:100%; border:none;" :model="menuItems"></p-menu>
             </p-splitterpanel>
             <p-splitterpanel>
