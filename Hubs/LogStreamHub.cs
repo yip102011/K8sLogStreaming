@@ -27,11 +27,22 @@ namespace SignalRChat.Hubs
         public async IAsyncEnumerable<string> GetPodLog(string ns, string pod, int tailLines, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var stream = new MemoryStream() as Stream;
-            try { stream = await _kubeClient.ReadNamespacedPodLogAsync(pod, ns, limitBytes: (1024 * 512), follow: true, tailLines: tailLines, timestamps: true); }
+            Stream stream;
+            try
+            {
+                stream = await _kubeClient.ReadNamespacedPodLogAsync(
+                                    pod,
+                                    ns,
+                                    limitBytes: (1024 * 512),
+                                    follow: true,
+                                    tailLines: tailLines,
+                                    timestamps: true,
+                                    cancellationToken: cancellationToken
+                                );
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, ex.Message);
+                _logger.LogError(ex, "Error LogStreamHub.GetPodLog unknow exception.");
                 yield break;
             }
 
