@@ -1,26 +1,188 @@
 ﻿@page "/"
-@model K8sLogStreaming.Pages.LogStreamPageModel
 @{
-    ViewData["Title"] = $"K8S Logs - {Model.Namespace} - {Model.KubeKind} - {Model.MetaName}";
-    Layout = "_Layout_2";
+    ViewData["Title"] = $"K8S Logs";
+    Layout = "_Layout";
 }
 
-
-
-
+<div>
+    <p-datatable id="logs_data_table"
+                 class="p-datatable-sm"
+                 style="max-height: calc(100vh - 2px);"
+                 :value="logs"
+                 sort-field="datetime"
+                 :sort-order="1"
+                 show-gridlines
+                 striped-rows
+                 v-model:filters="logfilter"
+                 filter-display="menu"
+                 :loading="loading"
+                 :global-filter-fields="['time','message']"
+                 :scrollable="true"
+                 scroll-height="flex">
+        <template #header>
+            <div class="flex align-content-center flex-wrap">
+                <span class="flex align-items-center">K8S Logs Stream</span>
+                <span class="flex align-items-center ml-auto">
+                    Auto Scroll
+                    <p-inputswitch class="ml-2" v-model="autoScroll"></p-inputswitch>
+                </span>
+                <span class="flex align-items-center ml-2 p-input-icon-left">
+                    <i class="pi pi-search"></i>
+                    <p-inputtext v-model="logfilter['global'].value" placeholder="Log Search"></p-inputtext>
+                </span>
+            </div>
+        </template>
+        <template #empty>
+            No Logs Found.
+        </template>
+        <template #loading>
+            Loading Logs. Please wait.
+        </template>
+        <p-column field="time" header="Time" style="max-width:90px;"></p-column>
+        <p-column field="message" header="Message"></p-column>
+    </p-datatable>
+</div>
 
 @section Scripts{
-<script>
-new Vue({
-    el: '#app',
-    data: function () {
-        const item = {
-            date: '2016-05-02',
-            name: '王小虎',
-            address: '上海市普陀区金沙江路 1518 弄'
-        };
-        return { tableData: Array(20).fill(item) };
+<style>
+    .p-datatable.p-datatable-sm .p-datatable-header {
+        padding: 0rem 0.5rem;
     }
-})
+
+    .p-datatable.p-datatable-sm .p-datatable-thead > tr > th {
+        padding: 0rem 0.5rem;
+    }
+
+    .p-datatable.p-datatable-sm .p-datatable-tbody > tr > td {
+        padding: 0rem 0.5rem;
+    }
+
+    .p-datatable.p-datatable-sm .p-datatable-tfoot > tr > td {
+        padding: 0rem 0.5rem;
+    }
+
+    .p-datatable.p-datatable-sm .p-datatable-footer {
+        padding: 0rem 0.5rem;
+    }
+</style>
+<script src="https://unpkg.com/primevue@3.11.1/datatable/datatable.min.js"></script>
+<script src="https://unpkg.com/primevue@3.11.1/column/column.min.js"></script>
+<script src="https://unpkg.com/primevue@3.11.1/dialog/dialog.min.js"></script>
+<script src="https://unpkg.com/primevue@3.11.1/togglebutton/togglebutton.min.js"></script>
+<script src="https://unpkg.com/primevue@3.11.1/inputswitch/inputswitch.min.js"></script>
+<script src="https://unpkg.com/%40microsoft/signalr@6.0.2/dist/browser/signalr.min.js"></script>
+<script>
+
+    class LogSteamService{
+        constructor(logs, autoScroll){
+            const hubUrl = "@SignalRChat.Hubs.LogStreamHub.HUB_URL";
+            this.logs = logs;
+            this.autoScroll = autoScroll;
+
+            this.connection = new signalR.HubConnectionBuilder()
+                .withUrl(hubUrl, { transport: signalR.HttpTransportType.WebSockets })
+                .withAutomaticReconnect()
+                .configureLogging(signalR.LogLevel.Information)
+                .build();
+
+            this.start();
+        }
+
+        async start(){
+            try {
+                var connectStart = this.connection.start();
+                var podList = await this.fetchPodList();
+
+                await connectStart;
+                console.log("SignalR Connected.");
+               for (let pod of podList) {
+                   this.registerForStreamNotifications(pod.kubeNamespace, pod.metaName);
+               }
+            } catch (err) {
+                console.log(err);
+                setTimeout(() => this.start(), 5000);
+            }
+        }
+
+        async fetchPodList(){
+            var response = await fetch("api/kube/pod/list" + window.location.search);
+            var podList = await response.json();
+            return podList;
+        }
+
+        registerForStreamNotifications(kubeNamespace, podName) {
+            var logDiv = document.querySelector("#logs_data_table .p-datatable-wrapper");
+            var subscription = this.connection.stream("GetPodLog", kubeNamespace, podName, 10).subscribe({
+                next: (content) => {
+                    this.addLog(content);
+                    // scroll to bottom
+                    //if(this.autoScroll.value) { logDiv.scrollTop = logDiv.scrollHeight - logDiv.clientHeight - 40; }
+                }
+            });
+        }
+
+        addLog(content){
+            var datetime = content.substring(0,30);
+            var time = content.substring(11,19);
+            var msg = content.substring(31, content.length);
+            this.logs.value.push({ datetime: datetime, time: time, message: msg });
+            if(this.logs.value.length > 100){
+                this.logs.value.shift();
+            }
+        }
+    }
+</script>
+<script>
+
+    const { createApp, ref, onMounted } = Vue;
+    const { FilterMatchMode, FilterOperator } = primevue.api;
+    const Tooltip = primevue.tooltip;
+
+    const App = {
+        setup() {
+            const autoScroll = ref(true);
+            const logs = ref([]);
+            const logService = new LogSteamService(logs, autoScroll);
+
+            const menuItems = ref(null);
+            fetch('api/menu').then(res => res.json()).then(data => menuItems.value = data);
+
+
+            const logfilter = ref({ 'global': { value: null, matchMode: FilterMatchMode.CONTAINS } });
+            const loading = ref(true);
+
+
+            onMounted(() => {
+                loading.value = false;
+            });
+
+            return { menuItems, logs, logfilter, loading, autoScroll };
+        },
+        components: {
+            "p-splitter": primevue.splitter,
+            "p-splitterpanel": primevue.splitterpanel,
+            "p-sidebar": primevue.sidebar,
+            "p-menu": primevue.menu,
+
+            "p-datatable": primevue.datatable,
+            "p-column": primevue.column,
+            "p-inputtext": primevue.inputtext,
+            "p-button": primevue.button,
+            "p-multiselect": primevue.multiselect,
+            "p-calendar": primevue.calendar,
+            "p-inputnumber": primevue.inputnumber,
+            "p-dropdown": primevue.dropdown,
+            "p-progressbar": primevue.progressbar,
+            "p-slider": primevue.slider,
+            "p-tristatecheckbox": primevue.tristatecheckbox,
+            "p-inputswitch": primevue.inputswitch
+        },
+    };
+
+    const routes = [{ path: "/", component: App }];
+
+    const router = VueRouter.createRouter({ history: VueRouter.createWebHistory(), routes });
+
+    var myapp = createApp(App).use(router).use(primevue.config.default).mount("#app");
 </script>
 }

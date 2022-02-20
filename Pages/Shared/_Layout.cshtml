@@ -1,44 +1,54 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+
+<html>
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"]</title>
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <meta name="viewport" content="width=device-width" />
+    <title>@ViewBag.Title</title>
+    
+    <!-- Import primevue style -->
+    <link href="https://unpkg.com/primevue@3.11.1/resources/themes/saga-blue/theme.css" rel="stylesheet" />
+    <link href="https://unpkg.com/primevue@3.11.1/resources/primevue.min.css" rel="stylesheet" />
+    <link href="https://unpkg.com/primeflex@3.1.0/primeflex.min.css" rel="stylesheet" />
+    <link href="https://unpkg.com/primeicons/primeicons.css" rel="stylesheet" />
+    
+    <!-- Import Vue 3 -->
+    <script src="https://unpkg.com/vue@next"></script>
+
+    <!-- Import component library -->
+    <script src="https://unpkg.com/primevue@3.11.1/core/core.min.js"></script>
+    <script src="https://unpkg.com/primevue@3.11.1/splitter/splitter.min.js"></script>
+    <script src="https://unpkg.com/primevue@3.11.1/splitterpanel/splitterpanel.min.js"></script>
+    <script src="https://unpkg.com/primevue@3.11.1/sidebar/sidebar.min.js"></script>
+    <script src="https://unpkg.com/primevue@3.11.1/skeleton/skeleton.min.js"></script>
+    <script src="https://unpkg.com/vue-router@4.0.0/dist/vue-router.global.js"></script>
+    
+    <!-- Import style -->
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/K8sLogStreaming.styles.css" asp-append-version="true" />
+
+    <!-- Import custom script-->
+    <script src="~/js/site.js" asp-append-version="true"></script>
 </head>
 <body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom ">
-            <div class="container">
-                <a class="navbar-brand" asp-area="" asp-page="/Index">K8sLogStreaming</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Index">Home</a>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </nav>
-    </header>
-    <div id="kube_side_nav">
-        @(await Html.PartialAsync("_Sidebar"))
+    <style>
+        body {
+            margin: unset;
+        }
+    </style>
+    <div id="app">
+        <p-splitter style="height: 100vh;" :gutter-size="0">
+            <p-splitterpanel style="max-width:250px; height:100%; overflow:auto; border-right:1px solid gray;" :minSize="20">
+                <p-menu style="width:100%; border:none;" :model="menuItems"></p-menu>
+            </p-splitterpanel>
+            <p-splitterpanel>
+                @RenderBody()
+            </p-splitterpanel>
+        </p-splitter>
     </div>
-    <div class="container">
-        <main role="main">
-            @RenderBody()
-        </main>
-    </div>
-
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>
-
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
+
+
+
+

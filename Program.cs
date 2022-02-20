@@ -9,6 +9,7 @@ builder.Services.AddRazorPages();
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<IKubernetes>(sp => new Kubernetes(KubernetesClientConfiguration.BuildDefaultConfig()));
 
+builder.Services.AddControllers().AddNewtonsoftJson();
 
 
 var app = builder.Build();
@@ -30,5 +31,5 @@ app.UseAuthorization();
 
 app.MapRazorPages();
 app.MapHub<LogStreamHub>(LogStreamHub.HUB_URL);
-
+app.MapControllers();
 app.Run();
