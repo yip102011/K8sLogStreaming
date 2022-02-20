@@ -1,81 +1,77 @@
 ﻿@page "/"
 @{
-    ViewData["Title"] = $"K8S Logs";
+    ViewData["Title"] = $"{Request.Query["KubeNamespace"]} | {Request.Query["MetaName"]}";
     Layout = "_Layout";
 }
 
 <div>
-    <p-datatable id="logs_data_table"
-                 class="p-datatable-sm"
-                 style="max-height: calc(100vh - 2px);"
-                 :value="logs"
-                 sort-field="datetime"
-                 :sort-order="1"
-                 show-gridlines
-                 striped-rows
-                 v-model:filters="logfilter"
-                 filter-display="menu"
-                 :loading="loading"
-                 :global-filter-fields="['time','message']"
-                 :scrollable="true"
-                 scroll-height="flex">
-        <template #header>
-            <div class="flex align-content-center flex-wrap">
-                <span class="flex align-items-center">K8S Logs Stream</span>
-                <span class="flex align-items-center ml-auto">
-                    Auto Scroll
-                    <p-inputswitch class="ml-2" v-model="autoScroll"></p-inputswitch>
-                </span>
-                <span class="flex align-items-center ml-2 p-input-icon-left">
-                    <i class="pi pi-search"></i>
-                    <p-inputtext v-model="logfilter['global'].value" placeholder="Log Search"></p-inputtext>
-                </span>
-            </div>
-        </template>
-        <template #empty>
-            No Logs Found.
-        </template>
-        <template #loading>
-            Loading Logs. Please wait.
-        </template>
-        <p-column field="time" header="Time" style="max-width:90px;"></p-column>
-        <p-column field="message" header="Message"></p-column>
-    </p-datatable>
+    <div id="header" class="flex align-content-center flex-wrap">
+        <h1 class="flex align-items-center">@ViewData["Title"]</h1>
+        <span class="flex align-items-center ml-auto">Auto Scroll<p-inputswitch class="ml-2" v-model="autoScroll"></p-inputswitch></span>
+        <span class="flex align-items-center ml-2 p-input-icon-left">
+            <i class="pi pi-search"></i>
+            <p-inputtext v-model="searchingStr" placeholder="Log Search"></p-inputtext>
+        </span>
+    </div>
+
+    <p-scrollpanel id="logs_container" style="height: calc(100vh - 45px - 5px - 4px)">
+        <pre class="logs_line_container" v-for="(log, index) in searchedLogs">{{log.time}} | {{log.message}}</pre>
+    </p-scrollpanel>
 </div>
 
 @section Scripts{
 <style>
-    .p-datatable.p-datatable-sm .p-datatable-header {
-        padding: 0rem 0.5rem;
+    #header {
+        border-bottom: 2px grey solid;
     }
 
-    .p-datatable.p-datatable-sm .p-datatable-thead > tr > th {
-        padding: 0rem 0.5rem;
+        #header h1 {
+            margin: unset;
+            height: 45px;
+        }
+
+    #logs_container {
+        margin-top: 0px;
+        margin-bottom: 5px;
+        margin-left: 5px;
+        margin-right: 5px;
+        overflow: hidden;
+        scroll-behavior: smooth;
     }
 
-    .p-datatable.p-datatable-sm .p-datatable-tbody > tr > td {
-        padding: 0rem 0.5rem;
-    }
+        #logs_container .logs_line_container {
+            margin: unset;
+        }
 
-    .p-datatable.p-datatable-sm .p-datatable-tfoot > tr > td {
-        padding: 0rem 0.5rem;
-    }
+        #logs_container .p-scrollpanel-content {
+            padding-bottom: unset;
+        }
 
-    .p-datatable.p-datatable-sm .p-datatable-footer {
-        padding: 0rem 0.5rem;
-    }
+        #logs_container.p-scrollpanel .p-scrollpanel-wrapper {
+            border-right: 9px solid var(--surface-border);
+        }
+
+        #logs_container.p-scrollpanel .p-scrollpanel-bar {
+            background-color: var(--primary-color);
+            opacity: 1;
+            transition: background-color .2s;
+        }
+
+            #logs_container.p-scrollpanel .p-scrollpanel-bar:hover {
+                background-color: #007ad9;
+            }
 </style>
-<script src="https://unpkg.com/primevue@3.11.1/datatable/datatable.min.js"></script>
-<script src="https://unpkg.com/primevue@3.11.1/column/column.min.js"></script>
-<script src="https://unpkg.com/primevue@3.11.1/dialog/dialog.min.js"></script>
 <script src="https://unpkg.com/primevue@3.11.1/togglebutton/togglebutton.min.js"></script>
 <script src="https://unpkg.com/primevue@3.11.1/inputswitch/inputswitch.min.js"></script>
+<script src="https://unpkg.com/primevue@3.11.1/scrollpanel/scrollpanel.min.js"></script>
 <script src="https://unpkg.com/%40microsoft/signalr@6.0.2/dist/browser/signalr.min.js"></script>
 <script>
-
-    class LogSteamService{
-        constructor(logs, autoScroll){
+    class LogSteamService {
+        constructor(logs, autoScroll) {
             const hubUrl = "@SignalRChat.Hubs.LogStreamHub.HUB_URL";
+
+            this.tailLines = 200;
+
             this.logs = logs;
             this.autoScroll = autoScroll;
 
@@ -88,45 +84,51 @@
             this.start();
         }
 
-        async start(){
+        async start() {
             try {
                 var connectStart = this.connection.start();
                 var podList = await this.fetchPodList();
 
                 await connectStart;
                 console.log("SignalR Connected.");
-               for (let pod of podList) {
-                   this.registerForStreamNotifications(pod.kubeNamespace, pod.metaName);
-               }
+                for (let pod of podList) {
+                    this.registerForLogStream(pod.kubeNamespace, pod.metaName);
+                }
             } catch (err) {
                 console.log(err);
                 setTimeout(() => this.start(), 5000);
             }
         }
 
-        async fetchPodList(){
+        async fetchPodList() {
             var response = await fetch("api/kube/pod/list" + window.location.search);
             var podList = await response.json();
             return podList;
         }
 
-        registerForStreamNotifications(kubeNamespace, podName) {
-            var logDiv = document.querySelector("#logs_data_table .p-datatable-wrapper");
-            var subscription = this.connection.stream("GetPodLog", kubeNamespace, podName, 10).subscribe({
+        registerForLogStream(kubeNamespace, podName) {
+            var subscription = this.connection.stream("GetPodLog", kubeNamespace, podName, this.tailLines).subscribe({
                 next: (content) => {
                     this.addLog(content);
-                    // scroll to bottom
-                    //if(this.autoScroll.value) { logDiv.scrollTop = logDiv.scrollHeight - logDiv.clientHeight - 40; }
+                    if (this.autoScroll.value) { this.scrollLogToBottom(); }
                 }
             });
         }
 
-        addLog(content){
-            var datetime = content.substring(0,30);
-            var time = content.substring(11,19);
+        scrollLogToBottom() {
+            var element = document.querySelector("#logs_container .p-scrollpanel-content");
+            setTimeout(() => element.scrollTop = element.scrollHeight, 100)
+        }
+
+        addLog(content) {
+            var datetime = content.substring(0, 30);
+            var time = content.substring(11, 19);
             var msg = content.substring(31, content.length);
-            this.logs.value.push({ datetime: datetime, time: time, message: msg });
-            if(this.logs.value.length > 100){
+
+            var logs = this.logs.value;
+            logs.push({ datetime: datetime, time: time, message: msg });
+
+            if (this.logs.value.length > 1000) {
                 this.logs.value.shift();
             }
         }
@@ -134,7 +136,7 @@
 </script>
 <script>
 
-    const { createApp, ref, onMounted } = Vue;
+    const { createApp, ref, onMounted, watch, onUpdated, computed } = Vue;
     const { FilterMatchMode, FilterOperator } = primevue.api;
     const Tooltip = primevue.tooltip;
 
@@ -144,38 +146,31 @@
             const logs = ref([]);
             const logService = new LogSteamService(logs, autoScroll);
 
+            const searchingStr = ref("");
+            const searchedLogs = computed(() => {
+                return logs.value
+                            .filter((log) => log.message.includes(searchingStr.value))
+                            .sort(function(a, b) {  return a.datetime - b.datetime;});
+            });
+
             const menuItems = ref(null);
             fetch('api/menu').then(res => res.json()).then(data => menuItems.value = data);
 
-
-            const logfilter = ref({ 'global': { value: null, matchMode: FilterMatchMode.CONTAINS } });
-            const loading = ref(true);
-
-
-            onMounted(() => {
-                loading.value = false;
-            });
-
-            return { menuItems, logs, logfilter, loading, autoScroll };
+            return { menuItems, logs, searchingStr, searchedLogs, autoScroll };
         },
         components: {
             "p-splitter": primevue.splitter,
             "p-splitterpanel": primevue.splitterpanel,
             "p-sidebar": primevue.sidebar,
             "p-menu": primevue.menu,
-
-            "p-datatable": primevue.datatable,
-            "p-column": primevue.column,
-            "p-inputtext": primevue.inputtext,
-            "p-button": primevue.button,
-            "p-multiselect": primevue.multiselect,
-            "p-calendar": primevue.calendar,
-            "p-inputnumber": primevue.inputnumber,
             "p-dropdown": primevue.dropdown,
-            "p-progressbar": primevue.progressbar,
-            "p-slider": primevue.slider,
+            "p-skeleton": primevue.skeleton,
+
+            "p-scrollpanel": primevue.scrollpanel,
+
+            "p-inputtext": primevue.inputtext,
+            "p-inputswitch": primevue.inputswitch,
             "p-tristatecheckbox": primevue.tristatecheckbox,
-            "p-inputswitch": primevue.inputswitch
         },
     };
 
