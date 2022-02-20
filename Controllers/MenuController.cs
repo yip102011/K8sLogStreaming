@@ -17,6 +17,27 @@ namespace K8sLogStreaming.Controllers
         }
 
         [HttpGet]
+        [Route("{KubeNamespace}")]
+        public async Task<IEnumerable<TopMenuItem>> Get(string KubeNamespace)
+        {
+            var menu = new List<TopMenuItem>();
+
+            var podListTask = _kubeClient.ListNamespacedPodAsync(KubeNamespace);
+            var deploymentListTask = _kubeClient.ListNamespacedDeploymentAsync(KubeNamespace);
+            var daemonSetsListTask = _kubeClient.ListNamespacedDaemonSetAsync(KubeNamespace);
+            var statefulSetsListTask = _kubeClient.ListNamespacedStatefulSetAsync(KubeNamespace);
+
+            await Task.WhenAll(podListTask, deploymentListTask, daemonSetsListTask, statefulSetsListTask);
+
+            menu.Add(GetTopMenuItem<V1PodList, V1Pod>(podListTask.Result));
+            menu.Add(GetTopMenuItem<V1DeploymentList, V1Deployment>(deploymentListTask.Result));
+            menu.Add(GetTopMenuItem<V1DaemonSetList, V1DaemonSet>(daemonSetsListTask.Result));
+            menu.Add(GetTopMenuItem<V1StatefulSetList, V1StatefulSet>(statefulSetsListTask.Result));
+
+            return menu;
+        }
+
+        [HttpGet]
         [Route("")]
         public async Task<IEnumerable<TopMenuItem>> Get()
         {

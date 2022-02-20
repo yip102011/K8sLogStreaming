@@ -37,13 +37,45 @@
     <div id="app">
         <p-splitter style="height: 100vh;" :gutter-size="0">
             <p-splitterpanel style="max-width:250px; min-width:250px; height:100%; overflow:auto; border-right:1px solid gray;" :minSize="20">
+                <p-dropdown style="width:100%;" v-model="selectedNs" :options="nsList" placeholder="Namespace"></p-dropdown>
                 <p-menu style="width:100%; border:none;" :model="menuItems"></p-menu>
             </p-splitterpanel>
-            <p-splitterpanel>
+            <p-splitterpanel style="overflow:hidden;">
                 @RenderBody()
             </p-splitterpanel>
         </p-splitter>
     </div>
+    <script>
+        class MenuService {
+            constructor(nsList, selectedNs, menuItems, watch) {
+                this.nsList = nsList;
+                this.selectedNs = selectedNs;
+                this.menuItems = menuItems;
+
+                this.fetchNsList(nsList);
+                
+                this.fetchMenu(menuItems, selectedNs);
+                watch(selectedNs, () =>{
+                    this.fetchMenu(menuItems, selectedNs);
+                });
+            }
+
+            fetchNsList(nsList){
+                fetch('api/kube/namespace/list').then(res => res.json()).then(data => {
+                       nsList.value = data.map(ns => ns.metaName);
+                       nsList.value.unshift("All")
+                });
+            }
+
+            fetchMenu(menuItems, selectedNs){
+                var url = "api/menu";
+                if(selectedNs.value != "" && selectedNs.value != "All"){
+                    url = url + "/" + selectedNs.value;
+                }
+                fetch(url).then(res => res.json()).then(data => menuItems.value = data);
+            }
+        }
+    </script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

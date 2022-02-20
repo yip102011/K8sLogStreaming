@@ -17,8 +17,17 @@ namespace K8sLogStreaming.Controllers
         }
 
         [HttpGet]
+        [Route("namespace/list")]
+        public async Task<IActionResult> NamespaceList()
+        {
+            var kubeObjList = await _kubeClient.ListNamespaceAsync();
+            var simList = kubeObjList.Items.Select(pod => ConvertToSimObj(pod));
+            return Ok(simList);
+        }
+
+        [HttpGet]
         [Route("pod/list")]
-        public async Task<IActionResult> List(string KubeNamespace, string KubeKind, string MetaName)
+        public async Task<IActionResult> PodList(string KubeNamespace, string KubeKind, string MetaName)
         {
             //[FromRoute] K8sSimpleObj k8sSimpleObj
             var ns = KubeNamespace.ToLower();
@@ -53,20 +62,27 @@ namespace K8sLogStreaming.Controllers
 
             return Ok(podList);
         }
+
         private async Task<IEnumerable<K8sSimpleObj>> GetPodListAsync(string KubeNamespace, V1LabelSelector selector)
         {
             var labelMatchs = selector.MatchLabels.Select(pair => pair.Key + "=" + pair.Value);
             var labelStr = string.Join(',', labelMatchs);
             var k8sPodList = await _kubeClient.ListNamespacedPodAsync(KubeNamespace, labelSelector: labelStr);
-            var podList = k8sPodList.Items.Select(pod => new K8sSimpleObj
-            {
-                KubeNamespace = pod.Namespace(),
-                KubeKind = pod.GetKubernetesTypeMetadata().Kind,
-                MetaName = pod.Name()
-            });
-
+            var podList = k8sPodList.Items.Select(pod => ConvertToSimObj(pod));
             return podList;
         }
+
+        private static K8sSimpleObj ConvertToSimObj<T>(T kubeObj) where T : IKubernetesObject, IMetadata<V1ObjectMeta>
+        {
+            var result = new K8sSimpleObj
+            {
+                KubeKind = kubeObj.GetKubernetesTypeMetadata().Kind,
+                KubeNamespace = kubeObj.Namespace(),
+                MetaName = kubeObj.Name()
+            };
+            return result;
+        }
+
         public struct K8sSimpleObj
         {
             public string KubeNamespace;
